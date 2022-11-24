@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.66"
 chrono = { version = "0.4.22", features = ["serde"] }
+futures = "0.3.25"
+lazy_static = "1.4.0"
 serde = { version = "1.0.147", features = ["derive"] }
 serde_json = "1.0.87"
 thiserror = "1.0.37"

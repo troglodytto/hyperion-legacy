@@ -13,15 +13,8 @@ pub enum HttpError {
 impl HttpError {
     pub fn as_response(&self) -> HttpResponse {
         match self {
-            HttpError::BadRequest { message } => HttpResponse::new(400, None, None),
-            HttpError::IoError(_) => HttpResponse::new(500, None, None),
-        }
-    }
-
-    fn get_status_code(&self) -> u16 {
-        match self {
-            HttpError::BadRequest { message: _ } => 400,
-            HttpError::IoError(_) => 500,
+            HttpError::BadRequest { message } => HttpResponse::new(400, None),
+            HttpError::IoError(_) => HttpResponse::new(500, None),
         }
     }
 }

@@ -11,11 +11,7 @@ pub struct HttpResponse {
 }
 
 impl HttpResponse {
-    pub fn new(
-        status: u16,
-        extra_headers: Option<Vec<HttpHeader>>,
-        body: Option<HttpBody>,
-    ) -> HttpResponse {
+    pub fn new(status: u16, body: Option<HttpBody>) -> HttpResponse {
         let mut headers = vec![
             HttpHeader {
                 name: "Server".to_string(),
@@ -35,10 +31,6 @@ impl HttpResponse {
             },
         });
 
-        if let Some(extra_headers) = extra_headers {
-            headers.extend(extra_headers);
-        }
-
         HttpResponse {
             status,
             headers,
@@ -53,6 +45,7 @@ impl HttpResponse {
             200 => "OK",
             204 => "No Content",
             205 => "Reset Content",
+            301 => "Moved Permanently",
             304 => "Not Modified",
             307 => "Temporary Redirect",
             400 => "Bad Request",
@@ -77,6 +70,10 @@ impl HttpResponse {
         }
 
         response
+    }
+
+    pub fn add_header(&mut self, header: HttpHeader) {
+        self.headers.push(header);
     }
 }
 

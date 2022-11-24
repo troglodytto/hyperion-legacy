@@ -2,12 +2,13 @@ use crate::HttpError;
 use std::fmt::Display;
 
 #[derive(Debug, Clone, Copy, Default)]
-pub(crate) enum HttpMethod {
+pub enum HttpMethod {
     #[default]
     GET,
     POST,
     PUT,
     DELETE,
+    HEAD,
 }
 
 impl HttpMethod {
@@ -17,6 +18,7 @@ impl HttpMethod {
             "POST" => Ok(HttpMethod::POST),
             "UPDATE" => Ok(HttpMethod::PUT),
             "DELETE" => Ok(HttpMethod::DELETE),
+            "HEAD" => Ok(HttpMethod::HEAD),
             _ => Err(HttpError::BadRequest {
                 message: "Method Not allowed".to_string(),
             }),
@@ -31,6 +33,7 @@ impl Display for HttpMethod {
             HttpMethod::POST => "POST",
             HttpMethod::PUT => "PUT",
             HttpMethod::DELETE => "DELETE",
+            HttpMethod::HEAD => "HEAD",
         };
 
         write!(f, "{method_string}")

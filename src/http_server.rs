@@ -1,4 +1,5 @@
-use crate::{HttpBody, HttpError, HttpRequest, HttpResponse};
+use crate::{HttpBody, HttpError, HttpRequest, HttpResponse, ROUTER};
+use futures::Future;
 use std::{io::ErrorKind, process::exit};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, Interest, Result as IoResult},
@@ -15,6 +16,13 @@ pub struct HttpServer {
 }
 
 impl HttpServer {
+    pub async fn add_handler<P>(&self, path: &str, func: fn(HttpRequest) -> P)
+    where
+        P: Future<Output = HttpResponse> + Send + 'static,
+    {
+        ROUTER.write().await.add_handler(path, func);
+    }
+
     pub async fn new(addr: impl ToSocketAddrs) -> IoResult<HttpServer> {
         Ok(HttpServer {
             listener: TcpListener::bind(addr).await?,
@@ -50,7 +58,7 @@ impl HttpServer {
             };
 
             tokio::spawn(async move {
-                match HttpServer::handle_request(&mut stream).await {
+                match HttpServer::handle(&mut stream).await {
                     Ok(response) => response,
                     Err(error) => HttpServer::handle_error(&mut stream, error).await,
                 }
@@ -68,21 +76,16 @@ impl HttpServer {
         });
     }
 
-    async fn handle_request(client: &mut TcpStream) -> Result<(), HttpError> {
+    async fn handle(client: &mut TcpStream) -> Result<(), HttpError> {
         let (mut stream_reader, mut stream_writer) = client.split();
 
         while stream_reader.ready(Interest::READABLE).await?.is_readable() {
-            let request_bytes = HttpServer::read_request(&mut stream_reader).await?;
+            let request = HttpServer::read_request(&mut stream_reader).await?;
+            let router = ROUTER.read().await;
 
-            let mut request = HttpRequest::new(request_bytes)?;
+            let response = router.process_request(request.clone()).await;
 
-            if let Some(content_length) = request.get_content_length() {
-                // Reading Body
-                let body = HttpServer::read_body(&mut stream_reader, content_length).await?;
-                request.set_body(body);
-            }
-
-            HttpServer::respond(&mut stream_writer).await?;
+            HttpServer::respond(&mut stream_writer, response).await?;
 
             let keep_alive = request
                 .get_header("Connection")
@@ -93,18 +96,27 @@ impl HttpServer {
             }
         }
 
-        client.shutdown().await?;
-
-        Ok(())
+        Ok(client.shutdown().await?)
     }
 
-    async fn respond(stream_writer: &mut WriteHalf<'_>) -> IoResult<usize> {
-        let res = HttpResponse::new(200, None, None);
+    async fn read_request(stream_reader: &mut ReadHalf<'_>) -> Result<HttpRequest, HttpError> {
+        let request_bytes = HttpServer::read_request_metadata(stream_reader).await?;
 
-        Ok(stream_writer.write(&res.as_bytes()).await?)
+        let mut request = HttpRequest::new(request_bytes)?;
+
+        if let Some(content_length) = request.get_content_length() {
+            // Reading Body
+            let body = HttpServer::read_request_body(stream_reader, content_length).await?;
+            request.set_body(body);
+        }
+        Ok(request)
     }
 
-    async fn read_request(stream_reader: &mut ReadHalf<'_>) -> IoResult<Vec<u8>> {
+    async fn respond(stream_writer: &mut WriteHalf<'_>, response: HttpResponse) -> IoResult<usize> {
+        Ok(stream_writer.write(&response.as_bytes()).await?)
+    }
+
+    async fn read_request_metadata(stream_reader: &mut ReadHalf<'_>) -> IoResult<Vec<u8>> {
         let mut read_buffer = [0; READ_REQUEST_BUFFER_SIZE];
 
         let mut result_buffer = vec![];
@@ -131,7 +143,7 @@ impl HttpServer {
             .position(|window| window == &[13, 10, 13, 10])
     }
 
-    async fn read_body(
+    async fn read_request_body(
         stream_reader: &mut ReadHalf<'_>,
         content_length: usize,
     ) -> IoResult<HttpBody> {

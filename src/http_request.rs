@@ -21,11 +21,11 @@ impl Display for HttpVersion {
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
-    version: HttpVersion,
-    method: HttpMethod,
-    headers: Vec<HttpHeader>,
-    path: String,
-    body: Option<HttpBody>, // @todo
+    pub version: HttpVersion,
+    pub method: HttpMethod,
+    pub headers: Vec<HttpHeader>,
+    pub path: String,
+    pub body: Option<HttpBody>, // @todo
 }
 
 impl HttpRequest {
