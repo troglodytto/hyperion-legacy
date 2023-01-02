@@ -1,3 +1,4 @@
+mod config;
 mod http_body;
 mod http_cookie;
 mod http_error;
@@ -7,6 +8,7 @@ mod http_request;
 mod http_response;
 mod http_router;
 mod http_server;
+pub use config::HyperionConfig;
 pub use http_body::HttpBody;
 pub use http_cookie::HttpCookie;
 pub use http_error::HttpError;

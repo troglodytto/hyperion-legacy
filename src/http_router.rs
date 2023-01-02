@@ -33,18 +33,28 @@ impl HttpRouter {
         }
     }
 
-    pub fn add_handler<P>(&mut self, path: &str, fun: fn(HttpRequest) -> P)
+    pub fn add_handler<P>(&mut self, path: &str, func: fn(HttpRequest) -> P)
     where
         P: Future<Output = HttpResponse> + Send + 'static,
     {
         self.handlers
-            .insert(path.to_string(), RequestHandler::new(fun));
+            .insert(path.to_string(), RequestHandler::new(func));
+    }
+
+    fn match_path(&self, path: String) -> Option<&RequestHandler> {
+        if let Some(handler) = self.handlers.get(&path) {
+            return Some(handler);
+        }
+
+        // @todo Implement Pattern Matching for Wildcard Paths
+
+        None
     }
 
     pub async fn process_request(&self, request: HttpRequest) -> HttpResponse {
         let path = request.path.clone();
 
-        if let Some(handler) = self.handlers.get(&path) {
+        if let Some(handler) = self.match_path(path) {
             handler.call(request).await
         } else {
             HttpResponse::new(404, None)

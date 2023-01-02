@@ -1,8 +1,7 @@
+use crate::HttpResponse;
 use std::fmt::Display;
 use std::io;
 use thiserror::Error;
-
-use crate::HttpResponse;
 
 #[derive(Error, Debug)]
 pub enum HttpError {

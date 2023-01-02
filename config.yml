@@ -1,0 +1,12 @@
+servers:
+- location: /
+  port: 82
+  server_kind: !files
+    file_root: /var/www/html
+    index:
+    - index
+    - index.html
+- location: /
+  port: 83
+  server_kind: !proxy
+    pass: localhost:80
